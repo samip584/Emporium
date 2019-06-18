@@ -1,0 +1,1 @@
+Examine the present data of the stock market to help analyze the future data referring to past events suggested by the analyzer. 
