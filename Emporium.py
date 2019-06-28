@@ -65,7 +65,7 @@ def main():
 	regressor.compile(optimizer = 'adam', loss = 'mean_squared_error',metrics=['accuracy'])
 
 	# Fitting the RNN to the Training set
-	regressor.fit(X_train, y_train, epochs = 150, batch_size = 32)
+	regressor.fit(X_train, y_train, epochs = 100, batch_size = 32)
 
 
 
@@ -73,7 +73,7 @@ def main():
 
 	while True:
 		data_list = dataset_train.values.tolist()  # convert dataframe into a list
-		dataset_test=[]
+		dataset_of_month = []
 		while(True):
 			year = int(input("Enter the year: "))
 			month = int(input("Enter the month: "))
@@ -84,28 +84,48 @@ def main():
 				start_date = str(year)+"-"+str(month)
 				break
 
+		#data of the month selected by the user
 		for row in data_list:
 			if row[0][:7] == start_date:
-				dataset_test.append(row)
-		dataset_test = pd.DataFrame(np.array(dataset_test), columns = ("Date","Open","High","Low","Close","Adj Close","Volume"))
+				dataset_of_month.append(row)
 		
+		#change in the stock price in the month selected by the user
+		difference_lsit = []
+		for i in range(len(dataset_of_month)-1):
+			test = []
+			for j in range (1, 7):
+				test.append(dataset_of_month[i+1][j] - dataset_of_month[i][j])
+			difference_lsit.append(test)	
+		
+		#training set prepared by adding values of difference list to current day
+		dataset_test = []
+		dataset_test.append(data_list[-1][1:])
+		for i in range(len(difference_lsit)):
+			test = []
+			for j in range (0, 6):
+				test.append(dataset_test[i][j] + difference_lsit[i][j])
+			dataset_test.append(test)
+		dataset_test = dataset_test[1:]
+		dataset_test = pd.DataFrame(np.array(dataset_test), columns = ("Open","High","Low","Close","Adj Close","Volume"))	
+		print(dataset_test)
+
 
 
 
 		# Getting the predicted stock price of next month
-		
-		dataset_total = dataset_train['Open']
-		inputs = dataset_total[len(dataset_total) - 80:].values
-		inputs = inputs.reshape(-1,1)
-		inputs = sc.transform(inputs)
-		X_test = []
-		for i in range(60, 80):
-		    X_test.append(inputs[i-60:i, 0])
-		X_test = np.array(X_test)
-		X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
-
-		recent_month_stock_price = regressor.predict(X_test)
-		recent_month_stock_price = sc.inverse_transform(recent_month_stock_price)
+		#Predsicting market price using previous data
+		'''dataset_total = dataset_train['Open']
+								inputs = dataset_total[len(dataset_total) - 80:].values
+								inputs = inputs.reshape(-1,1)
+								inputs = sc.transform(inputs)
+								X_test = []
+								for i in range(60, 80):
+								    X_test.append(inputs[i-60:i, 0])
+								X_test = np.array(X_test)
+								X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+						
+								recent_month_stock_price = regressor.predict(X_test)
+								recent_month_stock_price = sc.inverse_transform(recent_month_stock_price)'''
 
 		dataset_total = pd.concat((dataset_train['Open'], dataset_test['Open']), axis = 0)
 		inputs = dataset_total[len(dataset_total) - len(dataset_test) - 60:].values
@@ -118,15 +138,14 @@ def main():
 		X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
 
 
-		user_month_stock_price = regressor.predict(X_test)
-		user_month_stock_price = sc.inverse_transform(user_month_stock_price)
-
+		analysed_stock_price = regressor.predict(X_test)
+		analysed_stock_price = sc.inverse_transform(analysed_stock_price)
+		print(analysed_stock_price)
 		x_data = []
-		for i in range(59,60+len(user_month_stock_price)):
+		for i in range(59,60+len(analysed_stock_price)):
 			x_data.append(i)
 		x_data = np.array(x_data)
 
-		analysed_stock_price = np.mean((user_month_stock_price, recent_month_stock_price), axis = 0)
 		analysed_stock_price = np.concatenate([training_set[-1:],analysed_stock_price])
 
 		# Visualising the results
@@ -138,7 +157,7 @@ def main():
 		plt.ylabel('Stock Price')
 		plt.legend()
 		plt.show()
-
+						
 
 if __name__ == "__main__":
     main()
